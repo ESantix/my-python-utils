@@ -11,58 +11,53 @@ def generate_gaussian_noise(m,s,lenght):
     noise = np.random.normal(m,s,lenght)
     return noise
 
-def decode_pam_4(sample,):
+def decode_pam_4(sample):
     symbols = [-3,-1,1,3]
     error = np.array(symbols)-np.full((len(symbols)),sample)
     abs_error = np.absolute(error)
     decoded = float(symbols[abs_error.argmin()])
     return decoded
 
+# Generate sampled signal plus noise
 x = generate_pam_4(100,3) # PAM-4
 n = generate_gaussian_noise(0,1,lenght=len(x)) # WGN
 x = np.add(x,n) # Add Noise
 
-x_old = 1
-d_old = 1
-h=0.5
-mu = 0.001
 
-y = np.zeros_like()
-s = np.zeros_like()
-z = np.zeros_like()
-h = np.zeros_like()
-e = np.zeros_like()
-num_err = 0
-for i in range(sig):
-    y = x + h*x_old
-    x_old = x.copy()
-    
-    y.append(fir_out)
-    h_n.append(h)
-    dec_out = float(decoded(fir_out,symbols))
-    dec_out+=h*d_old
-    d_old = dec_out
+y = np.zeros_like(x) # FIR output
+s = np.zeros_like(x) # Decoder output
+z = np.zeros_like(x) # FIR decoded output
+h = np.ones_like(x) # Tap evolution
+e = np.zeros_like(x) # Error (y-z)
 
-    err = fir_out - dec_out
-    err_n.append(np.absolute(err))
-    h += err*fir_out*mu
+# LMS FIR  ALgorithm
+num_err = 0 # Count total symbol errors
+mu = 0.000000001  # Learning rate
+
+h[0] = 0.5
+for n in range(1,len(x)):
+    y[n] = x[n]+h[n-1]*x[n-1] # FIR
+    s[n] = decode_pam_4(y[n]) # Decoder
+    z[n] = s[n]+h[n]*s[n-1]
+
+    e[n] = y[n]-z[n]
+    h[n] = h[n-1]+e[n]*y[n]*mu
 
 
-h_n = np.array(h_n)
-err_n = np.array(err_n)
+# SHOW SIGNALS
+fig, (ax_1,ax_2,ax_3) = plt.subplots(3, 1, sharex=True)
 
-# - SHOW SIGNALS
-fig, (ax_1,ax_2,ax_fir) = plt.subplots(3, 1, sharex=True)
 
-ax_1.plot(sig)
-
-ax_1.set_title('Original pulse')
+ax_1.set_title('Original signal')
 ax_1.margins(0, 0.1)
-ax_1.plot(sig_clean)
-ax_2.plot(err_n)
+ax_1.plot(y)
+
 ax_2.set_title('Error')
-ax_fir.plot(h_n)
-ax_fir.set_title('Tap value')
+ax_2.plot(e)
+
+ax_3.set_title('Tap value')
+ax_3.plot(h)
 fig.tight_layout()
+
 plt.show()
 
